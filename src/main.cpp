@@ -2187,7 +2187,8 @@ bool BitcoinMiner()
 
     CKey key;
     key.MakeNewKey();
-    CBigNum bnExtraNonce = 0;
+    CBigNum bnExtraNonce = 0; // extra nonce
+
     while (fGenerateBitcoins)
     {
         Sleep(50);
@@ -2308,10 +2309,11 @@ bool BitcoinMiner()
         uint256 hash;
         loop
         {
+            // generate hash guess
             BlockSHA256(&tmp.block, nBlocks0, &tmp.hash1);
             BlockSHA256(&tmp.hash1, nBlocks1, &hash);
 
-
+            // compare with target hash
             if (hash <= hashTarget)
             {
                 pblock->nNonce = tmp.block.nNonce;
@@ -2341,6 +2343,10 @@ bool BitcoinMiner()
             }
 
             // Update nTime every few seconds
+                // get the last ten bits: 0x3FF === 1111111111 (& 0x3ffff equivalent to %1024)
+            
+            // "For our timestamp network, we implement the proof-of-work by incrementing a nonce in the
+            //  block until a value is found that gives the block's hash the required zero bits." - bitcoin white paper proof of work
             if ((++tmp.block.nNonce & 0x3ffff) == 0)
             {
                 CheckForShutdown(3);
