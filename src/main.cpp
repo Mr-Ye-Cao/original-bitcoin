@@ -2193,6 +2193,10 @@ bool BitcoinMiner()
     {
         Sleep(50);
         CheckForShutdown(3);
+
+        /**
+         * what is vNodes? ************
+         */
         while (vNodes.empty())
         {
             Sleep(1000);
@@ -2235,6 +2239,8 @@ bool BitcoinMiner()
             vector<char> vfAlreadyAdded(mapTransactions.size());
             bool fFoundSomething = true;
             unsigned int nBlockSize = 0;
+
+            // why exactly half of max_size?
             while (fFoundSomething && nBlockSize < MAX_SIZE/2)
             {
                 fFoundSomething = false;
@@ -2244,6 +2250,7 @@ bool BitcoinMiner()
                     if (vfAlreadyAdded[n])
                         continue;
                     CTransaction& tx = (*mi).second;
+                    // isFinal ?
                     if (tx.IsCoinBase() || !tx.IsFinal())
                         continue;
 
@@ -2253,6 +2260,8 @@ bool BitcoinMiner()
                     int64 nMinFee = tx.GetMinFee(pblock->vtx.size() < 100);
 
                     map<uint256, CTxIndex> mapTestPoolTmp(mapTestPool);
+
+                    // ConnectInputs detail?
                     if (!tx.ConnectInputs(txdb, mapTestPoolTmp, CDiskTxPos(1,1,1), 0, nFees, false, true, nMinFee))
                         continue;
                     swap(mapTestPool, mapTestPoolTmp);
@@ -2264,6 +2273,7 @@ bool BitcoinMiner()
                 }
             }
         }
+        // nBits ?
         pblock->nBits = nBits;
         pblock->vtx[0].vout[0].nValue = pblock->GetBlockValue(nFees);
         printf("\n\nRunning BitcoinMiner with %d transactions in block\n", pblock->vtx.size());
@@ -2284,15 +2294,22 @@ bool BitcoinMiner()
                 unsigned int nNonce;
             }
             block;
+            // why is it never used?
             unsigned char pchPadding0[64];
+            
             uint256 hash1;
+            // why is it never used?
             unsigned char pchPadding1[64];
         }
         tmp;
 
         tmp.block.nVersion       = pblock->nVersion;
         tmp.block.hashPrevBlock  = pblock->hashPrevBlock  = (pindexPrev ? pindexPrev->GetBlockHash() : 0);
+        
+        // BuildMerkleTree
         tmp.block.hashMerkleRoot = pblock->hashMerkleRoot = pblock->BuildMerkleTree();
+
+        // GetMedianTimePast ? 
         tmp.block.nTime          = pblock->nTime          = max((pindexPrev ? pindexPrev->GetMedianTimePast()+1 : 0), GetAdjustedTime());
         tmp.block.nBits          = pblock->nBits          = nBits;
         tmp.block.nNonce         = pblock->nNonce         = 1;
@@ -2304,6 +2321,8 @@ bool BitcoinMiner()
         //
         // Search
         //
+        
+        // time function ?? 
         unsigned int nStart = GetTime();
         uint256 hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
         uint256 hash;
@@ -2325,6 +2344,8 @@ bool BitcoinMiner()
                     pblock->print();
 
                 SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);
+
+                // comment what is            CRITICAL_BLOCK     
                 CRITICAL_BLOCK(cs_main)
                 {
                     // Save key
@@ -2350,14 +2371,21 @@ bool BitcoinMiner()
             if ((++tmp.block.nNonce & 0x3ffff) == 0)
             {
                 CheckForShutdown(3);
+                // nonce overflows
                 if (tmp.block.nNonce == 0)
                     break;
+                // pindexBest
                 if (pindexPrev != pindexBest)
                     break;
+                // new transactions updated 
+                // time past 60mili
                 if (nTransactionsUpdated != nTransactionsUpdatedLast && GetTime() - nStart > 60)
                     break;
+                // 
                 if (!fGenerateBitcoins)
                     break;
+
+                // time check?
                 tmp.block.nTime = pblock->nTime = max(pindexPrev->GetMedianTimePast()+1, GetAdjustedTime());
             }
         }
