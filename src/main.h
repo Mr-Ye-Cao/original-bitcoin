@@ -357,9 +357,16 @@ public:
 class CTransaction
 {
 public:
+    // unique identifier of transaction
     int nVersion;
+    // transaction inputs
     vector<CTxIn> vin;
+    // transaction outpus
     vector<CTxOut> vout;
+    // nLockTime put constraints on when the transaction can be included in a block
+    // if nLockTime < 500000000 Specifies the block number after which this transaction can be included in a block.
+    // otherwise Specifies the UNIX timestamp after which this transaction can be included in a block.
+    // ref: https://en.bitcoin.it/wiki/NLockTime#:~:text=nLockTime%20is%20a%20parameter%20of,be%20accepted%20into%20a%20block.
     int nLockTime;
 
 

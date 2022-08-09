@@ -2212,10 +2212,15 @@ bool BitcoinMiner()
         // Create coinbase tx
         //
         CTransaction txNew;
+        // input is a list of size 1
         txNew.vin.resize(1);
+        // first object of input points the coins being created in the previous transaction
         txNew.vin[0].prevout.SetNull();
+        // scriptSig indicates from where the money was sent
         txNew.vin[0].scriptSig << nBits << ++bnExtraNonce;
+        // output is a list of size 1
         txNew.vout.resize(1);
+        // output also has the knowledge of who owns the amount of coins by pointing the public address the miner (key.GetPubKey())
         txNew.vout[0].scriptPubKey << key.GetPubKey() << OP_CHECKSIG;
 
 
@@ -2655,15 +2660,20 @@ bool CommitTransactionSpent(const CWalletTx& wtxNew)
 
 
 
-
+/**
+ * scriptPubKey: the public key that the money will point to in the output
+ */
 bool SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew)
 {
     CRITICAL_BLOCK(cs_main)
     {
+        // transaction fee which is passed by reference and will get the value in the function CreateTransaction
         int64 nFeeRequired;
         if (!CreateTransaction(scriptPubKey, nValue, wtxNew, nFeeRequired))
         {
+            // transaction failed
             string strError;
+            // check if the sum of transaction fees and transfer fees is enough to cover
             if (nValue + nFeeRequired > GetBalance())
                 strError = strprintf("Error: This is an oversized transaction that requires a transaction fee of %s ", FormatMoney(nFeeRequired).c_str());
             else
@@ -2671,6 +2681,7 @@ bool SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew)
             wxMessageBox(strError, "Sending...");
             return error("SendMoney() : %s\n", strError.c_str());
         }
+        // commit the transactoin
         if (!CommitTransactionSpent(wtxNew))
         {
             wxMessageBox("Error finalizing transaction", "Sending...");
@@ -2679,7 +2690,7 @@ bool SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew)
 
         printf("SendMoney: %s\n", wtxNew.GetHash().ToString().substr(0,6).c_str());
 
-        // Broadcast
+        // Broadcast to the network
         if (!wtxNew.AcceptTransaction())
         {
             // This must not fail. The transaction has already been signed and recorded.
