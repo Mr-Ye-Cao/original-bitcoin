@@ -1031,6 +1031,8 @@ bool StartNode(string& strError)
     return true;
 }
 
+/* when called?*
+*/
 bool StopNode()
 {
     printf("StopNode()\n");

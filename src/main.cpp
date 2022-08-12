@@ -2231,7 +2231,7 @@ bool BitcoinMiner()
         // output is a list of size 1
         txNew.vout.resize(1);
         // output also has the knowledge of who owns the amount of coins by pointing the public address the miner (key.GetPubKey())
-        txNew.vout[0].scriptPubKey << key.GetPubKey() << OP_CHECKSIG;
+        txNew.vout[0].scriptPubKey << key.GetPubKey() << OP_CHECKSIG; // "OP_CHECKSIG"
 
 
         //
