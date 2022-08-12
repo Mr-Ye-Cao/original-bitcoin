@@ -2195,8 +2195,14 @@ bool BitcoinMiner()
         CheckForShutdown(3);
 
         /**
-         * what is vNodes? ************
+         * what is vNodes?
+         * vNode refers to the network peers endpoint in the Bitcoin network
+         * that the user is aware of
          */
+        //
+        // here check if the nodes stored is empty
+        // if so as long as the nodes are empty close the thread
+        //
         while (vNodes.empty())
         {
             Sleep(1000);
@@ -2246,6 +2252,10 @@ bool BitcoinMiner()
             unsigned int nBlockSize = 0;
 
             // why exactly half of max_size?
+            /**
+             *  
+             *
+             */
             while (fFoundSomething && nBlockSize < MAX_SIZE/2)
             {
                 fFoundSomething = false;
