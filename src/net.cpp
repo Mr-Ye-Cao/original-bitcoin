@@ -1060,8 +1060,14 @@ void CheckForShutdown(int n)
 {
     if (fShutdown)
     {
+        // find which thread to turn off
+        // (vfThreadRunning[0]) ("ThreadSocketHandler still running\n");
+        // (vfThreadRunning[1]) ("ThreadOpenConnections still running\n");
+        // (vfThreadRunning[2]) ("ThreadMessageHandler still running\n");
+        // (vfThreadRunning[3]) ("ThreadBitcoinMiner still running\n");
         if (n != -1)
             vfThreadRunning[n] = false;
+        // turn off thread
         _endthread();
     }
 }

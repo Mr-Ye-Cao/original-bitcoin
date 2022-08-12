@@ -689,6 +689,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast)
     const unsigned int nInterval = nTargetTimespan / nTargetSpacing;
 
     // Genesis block
+    // special case
     if (pindexLast == NULL)
         return bnProofOfWorkLimit.GetCompact();
 
@@ -2210,7 +2211,10 @@ bool BitcoinMiner()
         }
 
         unsigned int nTransactionsUpdatedLast = nTransactionsUpdated;
+        // pindexBest is the longest chain the node is trying to append block to the longest chain
         CBlockIndex* pindexPrev = pindexBest;
+        // nBits is corolated with the proof of work needed for the next block, which is a measure
+        // of the difficulty of the next block
         unsigned int nBits = GetNextWorkRequired(pindexPrev);
 
 
@@ -2246,26 +2250,38 @@ bool BitcoinMiner()
         CRITICAL_BLOCK(cs_mapTransactions)
         {
             CTxDB txdb("r");
+            // pool of transactions to collect from
             map<uint256, CTxIndex> mapTestPool;
+            // one-hot encoding to record which transaction has been added
             vector<char> vfAlreadyAdded(mapTransactions.size());
+            // used as a flag to break the while loop
             bool fFoundSomething = true;
+            //  the size of the serialized transactions stream collected so far
             unsigned int nBlockSize = 0;
 
+            // 
             // why exactly half of max_size?
-            /**
-             *  
-             *
-             */
+            // here MAX_SIZE is used to regulate the upperlimit of
+            // how big the block transactions can contain. this is because the network has delays
+            // and transactions keep coming in as the miner is solving POW. the transaction pool therefore
+            // can be too big to be contained in one single block and has to wait for next block
+            //
             while (fFoundSomething && nBlockSize < MAX_SIZE/2)
             {
+                // flag set to false initially and will be set true at the end of while
                 fFoundSomething = false;
+                // n is used to mark the vfAlreadyAdded which transaction has been added
                 unsigned int n = 0;
+                // iterate over the entire transaction pool
                 for (map<uint256, CTransaction>::iterator mi = mapTransactions.begin(); mi != mapTransactions.end(); ++mi, ++n)
                 {
+                    // if this transaction has been added, pass by
                     if (vfAlreadyAdded[n])
                         continue;
+                    // get the transaction object
                     CTransaction& tx = (*mi).second;
-                    // isFinal ?
+                    // isFinal has to with the nLockTime which puts constraints on when
+                    // the transaction can be put into a block
                     if (tx.IsCoinBase() || !tx.IsFinal())
                         continue;
 
@@ -2277,6 +2293,9 @@ bool BitcoinMiner()
                     map<uint256, CTxIndex> mapTestPoolTmp(mapTestPool);
 
                     // ConnectInputs detail?
+                    // bool ConnectInputs(CTxDB& txdb, map<uint256, CTxIndex>& mapTestPool, CDiskTxPos posThisTx, int nHeight, int64& nFees, bool fBlock, bool fMiner, int64 nMinFee)
+                    // fBlock: false
+                    // fMiner: true
                     if (!tx.ConnectInputs(txdb, mapTestPoolTmp, CDiskTxPos(1,1,1), 0, nFees, false, true, nMinFee))
                         continue;
                     swap(mapTestPool, mapTestPoolTmp);
@@ -2288,24 +2307,34 @@ bool BitcoinMiner()
                 }
             }
         }
-        // nBits ?
+        // set the POW diffifulty
         pblock->nBits = nBits;
+        // nFees: Tally transaction fees, GetBlockValue is the reward function, i.e. how much coins will be rewards to the user
+        // here is setting the reward to the coinbase miner by setting the nValue of the output entry of coinbase transaction
         pblock->vtx[0].vout[0].nValue = pblock->GetBlockValue(nFees);
         printf("\n\nRunning BitcoinMiner with %d transactions in block\n", pblock->vtx.size());
 
 
         //
         // Prebuild hash buffer
+        // here create a replicate of the pblock created earlier
+        // to try and find the nonce 
         //
         struct unnamed1
         {
             struct unnamed2
             {
+                // the hash identifying the block
                 int nVersion;
+                // the pointer to the previous block
                 uint256 hashPrevBlock;
+                // the hash of the merckle transaction root
                 uint256 hashMerkleRoot;
+                // time stamp of the block
                 unsigned int nTime;
+                // POW difficulty
                 unsigned int nBits;
+                // the nonce used in the block header
                 unsigned int nNonce;
             }
             block;
