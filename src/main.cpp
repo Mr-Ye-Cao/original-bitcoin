@@ -2338,34 +2338,48 @@ bool BitcoinMiner()
                 unsigned int nNonce;
             }
             block;
-            // why is it never used?
+            // the reason pchPadding0 is used here
+            // is because in order to make the hash of the tmp
+            // different from the block itself, we use the trick
+            // to allocate extra memory and field to the block
             unsigned char pchPadding0[64];
             
+            // the hash of the temporary variable
             uint256 hash1;
-            // why is it never used?
+
+            // the reason pchPadding0 is used here
+            // is because in order to make the hash of the tmp
+            // different from the block itself, we use the trick
+            // to allocate extra memory and field to the block
             unsigned char pchPadding1[64];
         }
         tmp;
 
+        // replicate the tmp block towards the pblock
         tmp.block.nVersion       = pblock->nVersion;
         tmp.block.hashPrevBlock  = pblock->hashPrevBlock  = (pindexPrev ? pindexPrev->GetBlockHash() : 0);
         
         // BuildMerkleTree
         tmp.block.hashMerkleRoot = pblock->hashMerkleRoot = pblock->BuildMerkleTree();
 
-        // GetMedianTimePast ? 
+        // GetMedianTimePast get the timestamp of the 
         tmp.block.nTime          = pblock->nTime          = max((pindexPrev ? pindexPrev->GetMedianTimePast()+1 : 0), GetAdjustedTime());
         tmp.block.nBits          = pblock->nBits          = nBits;
-        tmp.block.nNonce         = pblock->nNonce         = 1;
+        tmp.block.nNonce         = pblock->nNonce         = 1; // the nonce start with value 1
 
+        // FormatHashBlocks i don't quite understand the part
+        // pend[-1] = (bits >> 0) & 0xff;
+        // pend[-2] = (bits >> 8) & 0xff;
+        // pend[-3] = (bits >> 16) & 0xff;
+        // pend[-4] = (bits >> 24) & 0xff;
         unsigned int nBlocks0 = FormatHashBlocks(&tmp.block, sizeof(tmp.block));
         unsigned int nBlocks1 = FormatHashBlocks(&tmp.hash1, sizeof(tmp.hash1));
 
 
         //
         // Search
+        // find the nonce
         //
-        
         // time function ?? 
         unsigned int nStart = GetTime();
         uint256 hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
