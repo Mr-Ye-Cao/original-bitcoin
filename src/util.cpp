@@ -333,6 +333,12 @@ uint64 GetRand(uint64 nMax)
 //  of other nodes clocks to correct ours.
 //
 
+//
+// ntp stands for network time protocol, which is
+// a networking protocol for clock synchronization between computer systems over packet-switched, variable-latency data networks
+// The protocol is usually described in terms of a client–server model, but can as easily 
+// be used in peer-to-peer relationships where both peers consider the other to be a potential time source.
+// 
 int64 GetTime()
 {
     return time(NULL);
@@ -351,6 +357,8 @@ void AddTimeData(unsigned int ip, int64 nTime)
 
     // Ignore duplicates
     static set<unsigned int> setKnown;
+    // syntax here: the second return value of set indicates if the insertion took place
+    // here it makes sure no duplicate time is inserted into the set.
     if (!setKnown.insert(ip).second)
         return;
 
@@ -362,9 +370,14 @@ void AddTimeData(unsigned int ip, int64 nTime)
     printf("Added time data, samples %d, ip %08x, offset %+I64d (%+I64d minutes)\n", vTimeOffsets.size(), ip, vTimeOffsets.back(), vTimeOffsets.back()/60);
     if (vTimeOffsets.size() >= 5 && vTimeOffsets.size() % 2 == 1)
     {
+        // sort the offset time length by length
         sort(vTimeOffsets.begin(), vTimeOffsets.end());
         int64 nMedian = vTimeOffsets[vTimeOffsets.size()/2];
+
+        // global variable is set to median
         nTimeOffset = nMedian;
+
+        // take the absolute value of nMedian and check if it is greater than 300
         if ((nMedian > 0 ? nMedian : -nMedian) > 5 * 60)
         {
             // Only let other nodes change our clock so far before we

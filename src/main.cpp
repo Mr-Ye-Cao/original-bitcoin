@@ -1240,6 +1240,10 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
     uint256 hash = pblock->GetHash();
     if (mapBlockIndex.count(hash))
         return error("ProcessBlock() : already have block %d %s", mapBlockIndex[hash]->nHeight, hash.ToString().substr(0,14).c_str());
+
+    // what is an orphan block???
+        // orphan block is a case where node hasn't received the block's predecessor
+        // therefore temporarily hold the block in the orphan blocks and wait to the predecessor
     if (mapOrphanBlocks.count(hash))
         return error("ProcessBlock() : already have block (orphan) %s", hash.ToString().substr(0,14).c_str());
 
@@ -1258,6 +1262,7 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
         mapOrphanBlocksByPrev.insert(make_pair(pblock->hashPrevBlock, pblock));
 
         // Ask this guy to fill in what we're missing
+        // send a msg through network asking for the predecessor block
         if (pfrom)
             pfrom->PushMessage("getblocks", CBlockLocator(pindexBest), GetOrphanRoot(pblock));
         return true;
@@ -2161,6 +2166,10 @@ void BlockSHA256(const void* pin, unsigned int nBlocks, void* pout)
 
     CryptoPP::SHA256::InitState(pstate);
 
+    //
+    // this is possible related to specific operating system
+    // where little endian OS would behave differently from non-little-endian-OS
+    //
     if (*(char*)&detectlittleendian != 0)
     {
         for (int n = 0; n < nBlocks; n++)
@@ -2280,6 +2289,7 @@ bool BitcoinMiner()
                         continue;
                     // get the transaction object
                     CTransaction& tx = (*mi).second;
+                    // if it is coinbase transaction, then it's already in the block
                     // isFinal has to with the nLockTime which puts constraints on when
                     // the transaction can be put into a block
                     if (tx.IsCoinBase() || !tx.IsFinal())
@@ -2380,8 +2390,11 @@ bool BitcoinMiner()
         // Search
         // find the nonce
         //
-        // time function ?? 
+        // GetTime appears to return the local machine time
+        // the time is calibrated using system lock, median of other server's lock, and ntp servers
         unsigned int nStart = GetTime();
+
+        // this is how the nBits plays in role of determining the mining task difficulty
         uint256 hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
         uint256 hash;
         loop
@@ -2393,6 +2406,7 @@ bool BitcoinMiner()
             // compare with target hash
             if (hash <= hashTarget)
             {
+                // record the nNonce used
                 pblock->nNonce = tmp.block.nNonce;
                 assert(hash == pblock->GetHash());
 
@@ -2403,7 +2417,7 @@ bool BitcoinMiner()
 
                 SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);
 
-                // comment what is            CRITICAL_BLOCK     
+                // what is CRITICAL_BLOCK     
                 CRITICAL_BLOCK(cs_main)
                 {
                     // Save key
@@ -2422,12 +2436,15 @@ bool BitcoinMiner()
             }
 
             // Update nTime every few seconds
-                // get the last ten bits: 0x3FF === 1111111111 (& 0x3ffff equivalent to %1024)
+                // 0x3ffff in binary 0b11111111111111 (&) get the last 14 bits
             
-            // "For our timestamp network, we implement the proof-of-work by incrementing a nonce in the
-            //  block until a value is found that gives the block's hash the required zero bits." - bitcoin white paper proof of work
+            // this line is checking if the last 14 bits of nNonce is zero
+            // which probably indicates the nonce is exhaustively used up
             if ((++tmp.block.nNonce & 0x3ffff) == 0)
             {
+                /**
+                 * i don't fully understand the purpose of this if block
+                 */
                 CheckForShutdown(3);
                 // nonce overflows
                 if (tmp.block.nNonce == 0)
@@ -2436,7 +2453,7 @@ bool BitcoinMiner()
                 if (pindexPrev != pindexBest)
                     break;
                 // new transactions updated 
-                // time past 60mili
+                // time past 60milisecs
                 if (nTransactionsUpdated != nTransactionsUpdatedLast && GetTime() - nStart > 60)
                     break;
                 // 
