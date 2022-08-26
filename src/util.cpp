@@ -364,6 +364,8 @@ void AddTimeData(unsigned int ip, int64 nTime)
 
     // Add data
     static vector<int64> vTimeOffsets;
+    
+    // offseting owner's own time
     if (vTimeOffsets.empty())
         vTimeOffsets.push_back(0);
     vTimeOffsets.push_back(nOffsetSample);
@@ -378,6 +380,7 @@ void AddTimeData(unsigned int ip, int64 nTime)
         nTimeOffset = nMedian;
 
         // take the absolute value of nMedian and check if it is greater than 300
+        // 
         if ((nMedian > 0 ? nMedian : -nMedian) > 5 * 60)
         {
             // Only let other nodes change our clock so far before we
