@@ -1,0 +1,18 @@
+-----Line 2195-----
+debug print
+Set mining thread priority lowest
+
+Initate CKey object 
+Call EC_KEY_generate_key (construct by calling elliptive curve function library)
+Initiate extraNonce to be 0
+
+The following is within While Loop: as long as 
+suspend the thread for 50 seconds
+close the mining thread
+
+The following is within While Loop::
+
+::The end of while Loop
+
+
+:The end of while Loop
