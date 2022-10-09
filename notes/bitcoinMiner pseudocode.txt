@@ -1,18 +1,93 @@
------Line 2195-----
-debug print
-Set mining thread priority lowest
+BitcoinMiner Pseudocode Format Specification:
+Code source: https://github.com/Mr-Ye-Cao/original-bitcoin/blob/master/src/main.cpp
 
-Initate CKey object 
-Call EC_KEY_generate_key (construct by calling elliptive curve function library)
-Initiate extraNonce to be 0
+SECTION # (LINE # - LINE #){
+Verb Noun
+elaboration / details
+}
 
-The following is within While Loop: as long as 
-suspend the thread for 50 seconds
-close the mining thread
+SECTION 1 (L 2195 - L 2200){
+Print debug info
 
-The following is within While Loop::
+Set Thread Priority
+    Set mining thread priority lowest
 
-::The end of while Loop
+Create EC_KEY_generate_key and extraNonce
+    Initate CKey object 
+    Call EC_KEY_generate_key (construct by calling elliptive curve function library)
+    Initiate extraNonce to be 0
+}
 
 
-:The end of while Loop
+SECTION 2 (L 2202 - 2467){
+
+Check global variable fGenerateBitcoins
+    fGenerateBitcoins's boolean value determines if mining computation will happen
+        if fGenerateBitcoins is false 
+            the rest of this SECTION 2 won't happen
+            the code will jump to the end of line 2469 and return fucntion BitcoinMiner
+    fGenerateBitcoins is controled in 
+        src/ui.cpp L 824 fGenerateBitcoins = event.IsChecked();
+                   L 3024 set to true
+                   ...
+
+
+Make the current thread sleep for 50 seconds
+
+Shut down the ThreadBitcoinMiner if fShutdown is true
+    ThreadBitcoinMiner is vfThreadRunning's 3rd thread
+        vfThreadRunning is a 4 slots array that marks the on/off of each thread
+            vfThreadRunning[0]: ThreadSocketHandler
+            vfThreadRunning[1]: ThreadOpenConnections
+            vfThreadRunning[2]: ThreadMessageHandler
+            vfThreadRunning[3]: ThreadBitcoinMiner
+    By calling net.cpp L 1061 CheckForShutdown
+        fShutdown's boolean value determines if the thread will be shut down
+            if fShutdown is true then end ThreadBitcoinMiner thread
+        fShutdown is only true 
+            if net.cpp L 1039 in stopNode() was executed
+            StopNode() is called in ui.cpp L 351
+                Happens when UI is shut down
+
+
+Check if the vNode is empty
+    vNode is a vector of Node where each node is a network p2p connection
+    if empty 
+        make current thread sleep for 1000 seconds (16.66mins)
+        Execute L37 to L50 in this document
+
+Make a copy of the current nTransactionsUpdated
+
+Make a copy of the pindexBest
+    pindexBest is a pointer to the index(datastructure CBlockIndex) of the node in the longest chain
+
+Determine the number of bits for the new block
+    By calling the function GetNextWorkRequired(pindexPrev) main.cpp L 685
+        Initialize variable nTargetTimespan equal to 2 weeks
+        Initialize variable nTargetSpacing which is equal to 10 minutes
+        Initialize variable nInterval which is equal to the number of intervals based on the spacing being 10 minutes
+        Check if pindexLast i.e. pointer to previous node of longest block is null
+            if so the number of bits is calculated in bignum.h L 269
+                bnProofOfWorkLimit is the upperbound of proof of work difficulty
+                bnProofOfWorkLimit's format is transformed using BN_bn2mpi(a, to)
+                    BN_bn2mpi(a, to) stores the representation of a at to, where *to must be large enough to hold the result. The size can be determined by calling BN_bn2mpi(a, NULL).
+        Check if the previous block's height is evenly divisible by nInterval
+            if so use the previous POW difficulty
+        Make a copy of pindexFirst as pindexFirst
+        Go back to the block representing the beginning of two weeks
+            On average every ten minutes creates a new block, so in two weeks there are nInterval number of blocks.
+            This estimate 10 mins per block is only rough estimate. So the limit adjustment happens next
+        Get the actual time difference between pindexLast(last block) and pindexFirst(first block) and store in variable nActualTimespan
+        Adjust nActualTimespan
+            If nActualTimespan is less than a quarter of nTargetTimespan
+                Make nActualTimespan exactly a quarter of nTargetTimespan
+            If nActualTimespan is greater than a 4 times of nTargetTimespan
+                Make nActualTimespan exactly 4 times of nTargetTimespan
+        Get the number of bits for last block (pindexLast) store in variable bnNew
+        Adjust bnNew based on the nActualTimespan and nTargetTimespan
+        If bnNew, i.e. the bits of difficulty is more than the POW limit
+            Make bnNew equal to POW limit
+
+
+
+}
