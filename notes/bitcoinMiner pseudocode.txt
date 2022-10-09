@@ -61,7 +61,7 @@ Make a copy of the current nTransactionsUpdated
 Make a copy of the pindexBest
     pindexBest is a pointer to the index(datastructure CBlockIndex) of the node in the longest chain
 
-Determine the number of bits for the new block
+Determine the number of bits for the new block and store as variable nBits
     By calling the function GetNextWorkRequired(pindexPrev) main.cpp L 685
         Initialize variable nTargetTimespan equal to 2 weeks
         Initialize variable nTargetSpacing which is equal to 10 minutes
@@ -87,6 +87,94 @@ Determine the number of bits for the new block
         Adjust bnNew based on the nActualTimespan and nTargetTimespan
         If bnNew, i.e. the bits of difficulty is more than the POW limit
             Make bnNew equal to POW limit
+
+Create variable txNew of type CTransaction (class defined in main.h L357)
+Resize the input vector field of txNew to 1
+Set the input vector's first element's prevout field to be null
+    prevout field points to where coins were created, i.e. previous transaction
+Set the input vector's first element's scriptSig to be concatenation of nBits and bnExtraNonce+1
+Resize the output vector field of txNew to 1
+Set the output vector's first element's scriptPubKey to be concatenation of public key created in L15 and op code OP_CHECKSIG
+
+Create a pointer named pblock of type CBlock
+    The pointer pblock points to the memory address: (new CBlock())
+    Class CBlock is defined in main.h L 812
+
+Push the coinbase transaction created in L 91 into pblock's vtx field
+    The pblock's vtx field is a vector of transactions of the block
+
+Initialize variable nFees as 0 to store the amount of reward to the miner
+    The variable's value will be set later
+
+Create variable txdb of CTxDB (defined in db.h) which will be used to read transactions from it
+    txdb is a database of transactions
+    Here txdb is in read mode: txdb("r")
+
+Create variable mapTestPool of type map<uint256, CTxIndex>
+    mapTestPool is used as a pool of collected transactions
+
+Create variable vfAlreadyAdded of size mapTransactions 
+    vfAlreadyAdded is to denote which transaction from mapTransactions has been added
+    mapTransactions is a global state that updated in AcceptTransaction() in main.cpp L 468
+
+Create boolean flag fFoundSomething as true
+
+Initialize variable nBlockSize as 0 that records the size of current block
+
+Check if fFoundSomething is true and nBlockSize is less than MAX_SIZE
+    MAX_SIZE is used to constain the size of block and therefore
+    the number of transactions it contains.
+
+Tentatively set fFoundSomething to false
+
+Initialize variable n which is used to mark if nth transaction has been added by checking vfAlreadyAdded
+
+Iterate over the mapTransactions (type map<uint256, CTransaction>) while increment n
+
+Check if nth transaction has been added by checking vfAlreadyAdded
+    if so, go to next iteration
+
+Retrieve CTransaction of the current transaction and store by reference as tx
+
+Check if one of following conditions is true, don't add transaction tx
+    1) tx is coinbase transaction
+        Because coinbase transaction is already in the block, txNew in L 103
+    2) tx is not finalized
+        IsFinal() is defined in main.h L 405
+        Don't fully understand what IsFinal() is trying to do
+
+Initialize variable nMinFee Calculated in GetMinFee() (defined in main.h L 511)
+    if tx's serialized size < 10000 and block's vector of transaction size less than 100
+        cost is 0
+    otherwise
+        cost = (1 + (int64)tx's serialized size / 1000) * CENT
+
+Create a temporary variable mapTestPoolTmp by making a copy of mapTestPool
+
+Connect the info tx through ConnectInputs
+    if failed, go to next iteration
+    ConnectInputs is defined in main.cpp L 773
+        check if transaction is coinbase
+        if not coinbase
+        ... worth going further
+        Update nFees, i.e. reward to the miner at L 855
+
+Swap the pointer of mapTestPool and mapTestPoolTmp
+    Pointer mapTestPool now points to memory address containing the new transaction tx
+    Therefore mapTestPool successfully collects the new transaction
+
+Push new transaction tx into pblock's vtx field
+
+Update the block size nBlockSize accouting the size of newly added transaction tx
+
+Mark the nth transaction has been added by updating vfAlreadyAdded[n]
+
+Update flag fFoundSomething to be true
+
+Write down nBits into the field of pblock->nBits
+
+Write down transaction vector's first transaction's first output's nValue to be nFees
+
 
 
 
