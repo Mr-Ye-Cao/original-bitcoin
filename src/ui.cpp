@@ -767,6 +767,7 @@ void CMainFrame::OnPaintListCtrl(wxPaintEvent& event)
     string strGen = "";
     if (fGenerateBitcoins)
         strGen = "    Generating";
+    // check if having any peer to peer connection and reflect on status bar
     if (fGenerateBitcoins && vNodes.empty())
         strGen = "(not connected)";
     m_statusBar->SetStatusText(strGen, 1);
@@ -1242,8 +1243,8 @@ CAboutDialog::CAboutDialog(wxWindow* parent) : CAboutDialogBase(parent)
 
     // Workaround until upgrade to wxWidgets supporting UTF-8
     wxString str = m_staticTextMain->GetLabel();
-    if (str.Find('Â') != wxNOT_FOUND)
-        str.Remove(str.Find('Â'), 1);
+    if (str.Find('ï¿½') != wxNOT_FOUND)
+        str.Remove(str.Find('ï¿½'), 1);
     m_staticTextMain->SetLabel(str);
 }
 
