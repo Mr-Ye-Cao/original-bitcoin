@@ -4,6 +4,9 @@ Verb Noun
 elaboration / details
 }
 
+Part that I found interesting: CTRL-F Look for(...)
+Part that I found my understanding could be improved: CTRL-F Look for(understand)
+
 Code source: https://github.com/Mr-Ye-Cao/original-bitcoin/
 
 SECTION 1 (L 2195 - L 2200){
@@ -156,7 +159,7 @@ Connect the info tx through ConnectInputs
     ConnectInputs is defined in main.cpp L 773
         check if transaction is coinbase
         if not coinbase
-        ... worth going further
+        This part is worth going further ...
         Update nFees, i.e. reward to the miner at L 855
 
 Swap the pointer of mapTestPool and mapTestPoolTmp
@@ -272,32 +275,50 @@ Process this block the same as if we had received it from another node
 Set the current thread priority to lowest
 Break the loop if all previous steps got executed
 
-Increment the nonce and check if nonce exceeds 0x3ffff (decimal 262143)
+Increment the nonce and check if nonce exceeds 0x3ffff (decimal equal to 262143)
+    The following conditions will be checked only after nonce exceeds 0x3ffff (binary 0b1111 1111 1111 1111 11) i.e. (nonce >= 0b10000 0000 0000 0000 00)
     if so 
-        check if nNonce is equal to 0
+        check if nNonce is equal to 0 (nNonce overflows unsigned int 2^32, 4294967296)
             if so break the for loop
                 Then while (fGenerateBitcoins) loop will be executed again
-                extraNonce will then be incremented and nonce will start over from 0 again
+                extraNonce will then be incremented and nonce will start over from 1 again in main.cpp L 2378
         check if pindexPrev is not equal to pindexBest
-            Break the loop because no longer working on the longest chain
+            Break the loop if thread no longer working on the longest chain
                 This is possible when user takes too long to compute and the chain is already changed
-        Check if nTransactionsUpdated is not equal to nTransactionsUpdatedLast and time spent from start of nonce trial is over 60 seconds
+        Check if nTransactionsUpdated is not equal to nTransactionsUpdatedLast and time spent since the start of nonce trial is over 60 seconds
             if so break
                 nTransactionsUpdated is a global state
-                nTransactionsUpdatedLast is a local state created at main.cpp L 2222
+                nTransactionsUpdatedLast is a local state created as a copy of nTransactionsUpdated at main.cpp L 2222
+                nTransactionsUpdated is not equal to nTransactionsUpdatedLast happens when nTransactionsUpdated is updated when the following scenario occurs
+                    Transaction pool changes
+                        nTransactionsUpdated could be incremented in AddToMemoryPool() L 491
+                            AddToMemoryPool() adds a new transaction into the global transaction pool mapTransactions then
+                        nTransactionsUpdated could be incremented in RemoveFromMemoryPool() L 497
+                            RemoveFromMemoryPool() removes the transaction itself from transaction pool mapTransactions
+                    Block changes
+                        nTransactionsUpdated could be incremented in AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
+                            AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos) updates existing pindexBest, the block with the most height if it detects a longer chain
+                            This part is worth digging into further ...
+
         Check if fGenerateBitcoins is no longer true
             Controled in ui.cpp
         
-        Change tmp.block's time field nTime to be the maximum between previous block's median time + 1 and current adjusted time
+        Change tmp.block's time field nTime to be the maximum of (previous block's median time + 1) and (current adjusted time)
             GetMedianTimePast is defined in main.h L 1107
                 Create an array of int of size nMedianTimeSpan(constant equal to 11)
                 Create a pointer pbegin to the end of nMedianTimeSpan
                 Create a pointer pend to the end of nMedianTimeSpan
-                Iterate pindex back to previous block and store its nTime in pbegin
-                Decrement pbegin which now points to previous slot of array pmedian
-                The overall effect of previous steps is to store all previous 11 blocks' nTime into array
-                Sort array pmedian from start to end
+                Iterate pindex back to previous block and store its nTime in pbegin each time decrement pbegin to point to previous slot of array pmedian
+                The overall effect of previous steps is to store all previous 11 blocks' nTime into array pmedian
+                Sort array pmedian in ascending order from start to end
                 Return the middle element of pmedian array
+            Current Adjusted Time (Time adjusted based on user's own time and other p2p nodes' time)
+                GetAdjustedTime() is defined in util.cpp L 349
+                GetAdjustedTime is equal to (GetTime() + nTimeOffset)
+                    GetTime() is equal to current machine time
+                    nTimeOffset is a static variable visible only in util.cpp
+                    nTimeOffset is updated in AddTimeData(unsigned int ip, int64 nTime) defined in util.cpp L 354
+                    nTimeOffset is calculated as median of every node p2p node's time difference relative to user's node
 
 Return True if BitcoinMiner successfully finished
 }
