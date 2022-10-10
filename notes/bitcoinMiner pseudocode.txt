@@ -175,7 +175,128 @@ Write down nBits into the field of pblock->nBits
 
 Write down transaction vector's first transaction's first output's nValue to be nFees
 
+Create variable tmp which contains
+    an inner struct called block
+    hash of tmp
+    two paddings pchPadding0, pchPadding1
+        Don't fully understand why paddings exist
 
 
+Replicate the nVersion info from pblock to tmp block
+Replicate the hashPrevBlock info from pblock to tmp block
+Replicate the hashMerkleRoot info from pblock to tmp block
+Replicate the nTime info from pblock to tmp block
+Replicate the nBits info from pblock to tmp block
+Replicate the nNonce info from pblock to tmp block
 
+Format the tmp.block using FormatHashBlocks(void* pbuffer, unsigned int len) 
+    FormatHashBlocks is defined in main.cpp L 2144
+        Convert pbuffer to a char pointer
+        Write 0 to to pdata + len for length 64 * blocks - len
+        Write 0x80 at len position of pdata
+        Don't fully understand what FormatHashBlocks does
+Format the tmp.hash1 using FormatHashBlocks(void* pbuffer, unsigned int len)
+
+Create a variable nStart which is equal to GetTime()
+    GetTime() returns the local machine time
+
+Initialize a variable hashTarget equal to int256 of the nBits
+Initialize a variable hash
+
+Call function BlockSHA256(&tmp.block, nBlocks0, &tmp.hash1)
+    BlockSHA256(const void* pin, unsigned int nBlocks, void* pout) defined in main.cpp L 2162
+    BlockSHA256 computes tmp.block info's hash and store in tmp.hash1
+
+Call function BlockSHA256(&tmp.hash1, nBlocks1, &hash)
+    BlockSHA256 computes tmp.hash1 info into a hash and store in variable hash
+    tmp.hash1 is the hash of the tmp.block computed in previous step
+
+Compare if the hash is no greater than the required hashTarget if so,
+    write the nonce of tmp.block into the pblock's nonce field
+    assert that hash is indeed equal to pblock's hash with found nonce
+
+Set the priority of current thread to normal
+
+Add the key to the Wallet 
+    AddKey(const CKey& key) (defined main.cpp L 65) 
+    Insert mapping [key.GetPubKey(): key.GetPrivKey()], i.e. public key to private key, into mapKeys
+    Insert mapping [Hash160(key.GetPubKey()): key.GetPubKey()], i.e. hash of public key to public key, into mapPubKeys
+    Record the public and private key pair in CWalletDB
+        CWalletDB is defined in db.h L 337
+        CWalletDB is similar to a Database
+
+Create a new key
+    MakeNewKey() is defined in key.h L 75
+
+Process this block the same as if we had received it from another node
+    by calling ProcessBlock(NULL, pblock.release())
+    ProcessBlock is defined in main.cpp L 1237
+        parameter pfrom = pfrom sender node doesn't matter
+        Initialize variable hash as the hash of pblock
+        Check if pblock already exists in mapBlockIndex, i.e. global state storing block index
+        Check if pblock exists in the mapOrphanBlocks
+            // an orphan block is a block which current node hasn't received the block's predecessor
+            // therefore the node temporarily holds the block in the orphan blocks map and wait for the predecessor to be received
+        Check the block Preliminarily
+            CheckBlock is defined in main.cpp L 1155
+            Check if block's vector of transactions is empty / exceeds MAX_SIZE / serialized size exceeds MAX_SIZE
+            Check if block's timestamp is too far into the future
+                greater than current adjusted time + 2 hours
+            Check if block's first transaction is coinbase, and the rest are not
+            Check if each transaction in the block is valid
+            Check if POF nBits is no greater than POW limit
+            Check the hash is no greater than the target hash
+            Check hashMerkleRoot is matched
+        Check if previous block not yet exists
+            if so
+                insert the pair of block's hash and block into orphan blocks map
+                insert the pair of block's predecessor's hash and block into mapOrphanBlocksByPrev
+                if the pfrom is not null, i.e. the sender node is known
+                    Communcate to the sender node to request for type getblocks to retrieve missing blocks
+                        PushMessage(const char* pszCommand, const T1& a1, const T2& a2, const T3& a3, const T4& a4) is defined in net.h L 695
+        Save pblock to disk
+            By calling AcceptBlock() defined in main.cpp L 1193
+        Recursively process any orphan blocks that depended on this one
+            Initialize a vector vWorkQueue, to store hashes
+            Push hash of pblock into vWorkQueue
+            Iterate over all indexes i of vWorkQueue
+                Obtain the hash at index i store as hashPrev
+                Iterate over mapOrphanBlocksByPrev start from first pair with first element no less than hashPrev end at first element greater than hashPrev
+                Retrieve orphan block and use a pointer pblockOrphan to refer to it
+                Write the orphan block into disk by calling AcceptBlock()
+                Push the orphan block into vWorkQueue to further be recursively processed
+                Erase the pair for hash of orphan block from mapOrphanBlocks
+                free the memory for orphan block pblockOrphan
+            Erase hashPrev from mapOrphanBlocksByPrev
+
+Set the current thread priority to lowest
+Break the loop if all previous steps got executed
+
+Increment the nonce and check if nonce exceeds 0x3ffff (decimal 262143)
+    if so 
+        check if nNonce is equal to 0
+            if so break the for loop
+                Then while (fGenerateBitcoins) loop will be executed again
+                extraNonce will then be incremented and nonce will start over from 0 again
+        check if pindexPrev is not equal to pindexBest
+            Break the loop because no longer working on the longest chain
+                This is possible when user takes too long to compute and the chain is already changed
+        Check if nTransactionsUpdated is not equal to nTransactionsUpdatedLast and time spent from start of nonce trial is over 60 seconds
+            if so break
+                nTransactionsUpdated is a global state
+                nTransactionsUpdatedLast is a local state created at main.cpp L 2222
+        Check if fGenerateBitcoins is no longer true
+            Controled in ui.cpp
+        
+        Change tmp.block's time field nTime to be the maximum between previous block's median time + 1 and current adjusted time
+            GetMedianTimePast is defined in main.h L 1107
+                Create an array of int of size nMedianTimeSpan(constant equal to 11)
+                Create a pointer pbegin to the end of nMedianTimeSpan
+                Create a pointer pend to the end of nMedianTimeSpan
+                Iterate pindex back to previous block and store its nTime in pbegin
+                Decrement pbegin which now points to previous slot of array pmedian
+                The overall effect is to store all previous 11 blocks' nTime into array
+
+        Sort array pmedian from start to end
+        Return the middle element of pmedian array
 }
