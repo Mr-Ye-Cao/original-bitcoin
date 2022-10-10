@@ -4,9 +4,6 @@ Verb Noun
 elaboration / details
 }
 
-Part that I found interesting: CTRL-F Look for(...)
-Part that I found my understanding could be improved: CTRL-F Look for(understand)
-
 Code source: https://github.com/Mr-Ye-Cao/original-bitcoin/
 
 SECTION 1 (L 2195 - L 2200){
