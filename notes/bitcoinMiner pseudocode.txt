@@ -1,10 +1,10 @@
 BitcoinMiner Pseudocode Format Specification:
-Code source: https://github.com/Mr-Ye-Cao/original-bitcoin/blob/master/src/main.cpp
-
 SECTION # (LINE # - LINE #){
 Verb Noun
 elaboration / details
 }
+
+Code source: https://github.com/Mr-Ye-Cao/original-bitcoin/
 
 SECTION 1 (L 2195 - L 2200){
 Print debug info
