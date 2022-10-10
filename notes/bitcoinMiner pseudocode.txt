@@ -295,8 +295,9 @@ Increment the nonce and check if nonce exceeds 0x3ffff (decimal 262143)
                 Create a pointer pend to the end of nMedianTimeSpan
                 Iterate pindex back to previous block and store its nTime in pbegin
                 Decrement pbegin which now points to previous slot of array pmedian
-                The overall effect is to store all previous 11 blocks' nTime into array
+                The overall effect of previous steps is to store all previous 11 blocks' nTime into array
+                Sort array pmedian from start to end
+                Return the middle element of pmedian array
 
-        Sort array pmedian from start to end
-        Return the middle element of pmedian array
+Return True if BitcoinMiner successfully finished
 }
