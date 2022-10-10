@@ -59,7 +59,7 @@ Check if the vNode is empty
 Make a copy of the current nTransactionsUpdated
 
 Make a copy of the pindexBest
-    pindexBest is a pointer to the index(datastructure CBlockIndex) of the node in the longest chain
+    pindexBest is a pointer to the index(datastructure CBlockIndex) of the block in the longest chain
 
 Determine the number of bits for the new block and store as variable nBits
     By calling the function GetNextWorkRequired(pindexPrev) main.cpp L 685
